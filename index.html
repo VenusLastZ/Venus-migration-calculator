@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Venus Migration Calculator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one-column field console over a starfield — Venus Alliance palette (black, baby blue, lavender, white numbers). Deliberately single dark look. */
+:root{
+  color-scheme:dark;
+  --bg:#000000; --panel:#07080e; --panel-2:#0e1120; --line:#1d2236;
+  --fg:#ffffff; --muted:#aab2c8; --faint:#6a7190;
+  --accent:#9fd8f0; --accent-ink:#03131b; --accent-dim:rgba(159,216,240,.12);
+  --lav:#c9a4f0; --purple:#a98ad8;
+  --t-reg:#8b90a6; --t-int:#c9a4f0; --t-adv:#9fd8f0; --t-eli:#ffffff; --warn:#ff9c8a;
+  --f-display:"Chakra Petch","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.wrap{position:relative;z-index:1;max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,8vw,42px);line-height:1;margin:0;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);text-shadow:0 0 18px rgba(159,216,240,.35)}
+.brand .sub{display:block;font-family:var(--f-display);font-weight:600;font-size:clamp(17px,4.6vw,21px);letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-top:4px}
+.brand small{display:block;font-family:var(--f-num);font-size:12px;letter-spacing:.12em;color:var(--lav);text-transform:uppercase;margin-top:6px}
+tr.top1 td:first-child{color:var(--accent);font-weight:700}
+tr.top2 td:first-child{color:var(--lav);font-weight:700}
+tr.top3 td:first-child{color:var(--purple);font-weight:700}
+tr.top1 td.stick{box-shadow:inset 3px 0 0 var(--accent)}
+tr.top2 td.stick{box-shadow:inset 3px 0 0 var(--lav)}
+tr.top3 td.stick{box-shadow:inset 3px 0 0 var(--purple)}
+tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
+tbody tr:nth-child(even) td.stick{background:#0b0c13}
+.tag{font-family:var(--f-num);font-size:12px;color:var(--muted);border:1px solid var(--line);padding:4px 8px;border-radius:4px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.label{font-family:var(--f-display);font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.sec-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.sec-h h2{font-family:var(--f-display);font-size:16px;letter-spacing:.12em;text-transform:uppercase;margin:0;color:var(--accent)}
+.grid{display:grid;gap:14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select,input[type=text]{width:100%;background:var(--panel-2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:12px;font-size:16px;font-family:var(--f-body)}
+input.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+select:focus,input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button,.btn{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.06em;border-radius:6px;padding:11px 10px;cursor:pointer;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);text-align:left}
+.seg button small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;letter-spacing:0;color:var(--faint)}
+.seg button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+.seg.center button{text-align:center}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);text-align:center}
+.btn.ghost{text-align:center}
+.btn.danger{color:var(--warn);text-align:center}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 140px}
+.field small{display:block;color:var(--faint);font-size:12px;margin-top:4px;font-family:var(--f-num)}
+/* result */
+.result{position:relative;overflow:hidden;border-color:var(--tier,var(--line))}
+.result::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--tier,var(--line))}
+.score{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.score b{font-family:var(--f-num);font-size:clamp(40px,12vw,56px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.score span{font-family:var(--f-num);color:var(--muted)}
+.tierline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.chip{font-family:var(--f-display);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:13px;padding:4px 10px;border-radius:4px;color:var(--bg);background:var(--tier,var(--t-reg))}
+.passes{font-family:var(--f-num);font-size:13px;color:var(--fg)}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.note.warn{color:var(--warn)}
+.bar{position:relative;height:10px;border-radius:5px;background:var(--panel-2);margin:16px 0 4px;overflow:visible}
+.bar i{position:absolute;top:0;bottom:0;width:2px;background:var(--faint)}
+.bar .pin{position:absolute;top:-4px;width:4px;height:18px;border-radius:2px;background:var(--tier,var(--accent));transform:translateX(-2px);transition:left .25s ease}
+.bar .seg-fill{position:absolute;top:0;bottom:0;border-radius:5px}
+.ticks{position:relative;height:16px;font-family:var(--f-num);font-size:11px;color:var(--faint)}
+.ticks span{position:absolute;transform:translateX(-50%)}
+.breakdown{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.breakdown dt{color:var(--muted)}
+.breakdown dd{margin:0;font-family:var(--f-num);font-variant-numeric:tabular-nums;text-align:right}
+/* roster */
+.tablewrap{overflow-x:auto;margin:0 -4px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:980px}
+td,th{white-space:nowrap}
+th.stick,td.stick{position:sticky;left:0;background:var(--panel);z-index:1}
+tbody tr:hover td.stick,tbody tr.sel td.stick{background:var(--panel-2)}
+th.grp{border-left:1px solid var(--line)}
+td.grp{border-left:1px solid var(--line)}
+td.sm{color:var(--muted);font-size:13px}
+th{font-family:var(--f-display);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:9px 8px;border-bottom:1px solid var(--line)}
+td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums;text-align:right}
+th.n{text-align:right}
+tbody tr{cursor:pointer}
+tbody tr:hover,tbody tr.sel{background:var(--panel-2)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--tier);margin-right:6px}
+.empty{color:var(--muted);font-size:14px;padding:8px 0}
+.status{font-size:12px;color:var(--faint);font-family:var(--f-num)}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel-2);border:1px solid var(--warn);border-radius:6px;padding:10px;font-size:14px}
+.toast{min-height:18px;font-size:13px;color:var(--t-int);font-family:var(--f-num)}
+.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tiers div{background:var(--panel-2);border-radius:6px;padding:10px;border-top:3px solid var(--tier)}
+.tiers b{display:block;font-family:var(--f-display);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.tiers span{font-family:var(--f-num);font-size:12px;color:var(--muted)}
+footer{font-size:12px;color:var(--faint)}
+footer a{color:var(--accent)}
+@media (max-width:520px){.tiers{grid-template-columns:1fr 1fr}.two{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<canvas id="stars" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Venus Alliance</h1>
+      <span class="sub">Migration Calculator</span>
+      <small>Server 707 · [Venu]</small>
+    </div>
+    <span class="tag" id="dbStatus">Roster: connecting…</span>
+  </header>
+
+  <section>
+    <div class="sec-h"><h2>Member</h2><span class="status" id="memberStatus">Example values loaded</span></div>
+    <div class="grid">
+      <div class="field">
+        <label class="label" for="member">Pick a Venus member</label>
+        <select id="member"><option value="">— New / unsaved —</option></select>
+      </div>
+      <div class="field">
+        <label class="label" for="name">In-game name</label>
+        <input type="text" id="name" placeholder="e.g. Sanjanaaaa" autocomplete="off" maxlength="40">
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Account data</h2><button class="btn ghost" id="exampleBtn" type="button" style="flex:0 0 auto;padding:6px 10px;font-size:12px">Load example</button></div>
+    <div class="grid">
+      <div>
+        <p class="label">Season</p>
+        <div class="seg" id="season">
+          <button type="button" data-v="s12" aria-pressed="true">S1–S2<small>Before S3</small></button>
+          <button type="button" data-v="s3" aria-pressed="false">S3<small>Before S4</small></button>
+        </div>
+      </div>
+      <div>
+        <p class="label">T10 unlocked</p>
+        <div class="seg center" id="t10">
+          <button type="button" data-v="no" aria-pressed="true">No</button>
+          <button type="button" data-v="yes" aria-pressed="false">Yes</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="vehicle">Vehicle type</label>
+        <select id="vehicle">
+          <option value="hercules">Hercules</option>
+          <option value="destroyer">Destroyer</option>
+          <option value="ex">EX Destroyer</option>
+        </select>
+      </div>
+      <div class="two">
+        <div class="field"><label class="label" for="structure">Structure power</label><input class="num" type="text" inputmode="numeric" id="structure" placeholder="76,000,000"></div>
+        <div class="field"><label class="label" for="tech">Tech power</label><input class="num" type="text" inputmode="numeric" id="tech" placeholder="20,000,000"></div>
+        <div class="field"><label class="label" for="hero">Hero power</label><input class="num" type="text" inputmode="numeric" id="hero" placeholder="60,000,000"></div>
+        <div class="field"><label class="label" for="mod">Mod vehicle power</label><input class="num" type="text" inputmode="numeric" id="mod" placeholder="9,000,000"></div>
+      </div>
+      <p class="note" style="margin:0">Copy these from Profile → Details. Troop power doesn't count.</p>
+    </div>
+  </section>
+
+  <section class="result" id="result">
+    <p class="label">Estimated migration score</p>
+    <div class="score"><b id="scoreVal">—</b><span>M</span></div>
+    <div class="tierline">
+      <span class="chip" id="tierChip">—</span>
+      <span class="passes" id="passes"></span>
+    </div>
+    <p class="note" id="tierNote">Enter your four power values to see your tier.</p>
+    <div class="bar" id="bar"></div>
+    <div class="ticks" id="ticks"></div>
+    <dl class="breakdown" id="breakdown"></dl>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="saveBtn" type="button">Save to Venus roster</button>
+      <button class="btn ghost" id="resetBtn" type="button">Reset</button>
+      <button class="btn danger" id="delBtn" type="button" hidden>Remove member</button>
+    </div>
+    <div class="confirm" id="confirmBox" hidden>
+      <span style="flex:1 1 180px">Remove <b id="confirmName"></b> from the roster?</span>
+      <button class="btn danger" id="confirmYes" type="button" style="flex:0 0 auto">Remove</button>
+      <button class="btn ghost" id="confirmNo" type="button" style="flex:0 0 auto">Keep</button>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+  </section>
+
+  <section>
+    <div class="sec-h"><h2>Venus roster</h2><span class="status" id="rosterCount"></span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>#</th><th class="stick">Member</th><th>Tier</th><th class="n">Score</th><th class="n">Passes</th><th class="grp">Season</th><th>T10</th><th>Vehicle</th><th class="n grp">Structure</th><th class="n">Tech</th><th class="n">Hero</th><th class="n">Mod vehicle</th></tr></thead>
+        <tbody id="roster"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="rosterEmpty">No members saved yet. Enter a member's name and powers above, then tap “Save to Venus roster”. Members you save are kept on this device.</p>
+  </section>
+
+  <section>
+    <p class="label">Tier ranges · <span id="tierSeasonLbl">S1–S2</span></p>
+    <div class="tiers" id="tierRef"></div>
+  </section>
+
+  <footer>Same community formula as <a href="https://lastz.gg/calculators/migration-calculator">lastz.gg's Migration Calculator</a>. It's an estimate, not the official formula — confirm in the in-game migration panel before spending passes, especially near a tier line.</footer>
+</div>
+
+<script>
+(function stars(){
+  const c=document.getElementById("stars");if(!c||!c.getContext)return;
+  const x=c.getContext("2d");let pts=[];
+  function draw(){
+    const dpr=window.devicePixelRatio||1,w=innerWidth,h=innerHeight;
+    c.width=w*dpr;c.height=h*dpr;x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+    if(!pts.length){for(let i=0;i<260;i++)pts.push([Math.random(),Math.random(),Math.random()])}
+    pts.forEach(p=>{const r=p[2]<.9?.5+p[2]*.5:1.1+p[2]*.6;x.globalAlpha=.35+p[2]*.6;x.fillStyle="#fff";x.beginPath();x.arc(p[0]*w,p[1]*h,r,0,6.283);x.fill()});
+  }
+  draw();addEventListener("resize",draw);
+})();
+const TIERS={
+  s12:{cuts:[20,40,100],label:"S1–S2",hiEdge:false},
+  s3:{cuts:[40,80,160],label:"S3",hiEdge:true}
+};
+const TIER_INFO=[
+  {name:"Regular",passes:10,color:"var(--t-reg)",freedom:"Free migration"},
+  {name:"Intermediate",passes:15,color:"var(--t-int)",freedom:"Invite / application"},
+  {name:"Advanced",passes:20,color:"var(--t-adv)",freedom:"Invite / application"},
+  {name:"Elite",passes:50,color:"var(--t-eli)",freedom:"Invite / approval only"}
+];
+const VEH={hercules:{label:"Hercules",bonus:0},destroyer:{label:"Destroyer",bonus:0},ex:{label:"EX Destroyer",bonus:43}};
+const EXAMPLE={structure:76e6,tech:20e6,hero:60e6,mod:9e6,season:"s12",t10:"no",vehicle:"hercules"};
+
+function calc(d){
+  const m=v=>(Number(v)||0)/1e6;
+  const S=m(d.structure),T=m(d.tech),H=m(d.hero),M=m(d.mod);
+  const parts=[
+    ["Base offset",-45],
+    ["Structure + Tech × 0.06",(S+T)*0.06],
+    ["Hero × 1.2",H*1.2],
+    ["Mod vehicle × 1.1",M*1.1]
+  ];
+  const vb=(VEH[d.vehicle]||VEH.hercules).bonus;
+  if(vb) parts.push([VEH[d.vehicle].label+" bonus",vb]);
+  if(d.season==="s3"&&d.t10==="yes") parts.push(["S3 T10 adjust (0.77 × Hero − 45)",0.77*H-45]);
+  const score=Math.max(0,parts.reduce((a,p)=>a+p[1],0));
+  const cfg=TIERS[d.season]||TIERS.s12;
+  const [a,b,c]=cfg.cuts;
+  let idx;
+  if(cfg.hiEdge) idx=score<a?0:score<b?1:score<c?2:3;
+  else idx=score<a?0:score<b?1:score<=c?2:3;
+  const border=cfg.cuts.some(x=>Math.abs(score-x)<1);
+  return {score,parts,idx,border,cfg};
+}
+
+const $=id=>document.getElementById(id);
+const fields=["structure","tech","hero","mod"];
+let state={season:"s12",t10:"no"};
+let roster=[]; let db=null; let currentId="";
+
+function parseNum(s){const n=Number(String(s).replace(/[^\d.]/g,""));return isFinite(n)?n:0}
+function fmt(n){return n?Math.round(n).toLocaleString("en-US"):""}
+function fmtM(n){return (Math.round(n*10)/10).toFixed(1)}
+
+function readForm(){
+  const d={season:state.season,t10:state.t10,vehicle:$("vehicle").value,name:$("name").value.trim()};
+  fields.forEach(f=>d[f]=parseNum($(f).value));
+  return d;
+}
+function fillForm(d){
+  fields.forEach(f=>$(f).value=fmt(d[f]));
+  setSeg("season",d.season||"s12");setSeg("t10",d.t10||"no");
+  $("vehicle").value=d.vehicle||"hercules";
+  $("name").value=d.name||"";
+  update();
+}
+function setSeg(id,v){
+  state[id]=v;
+  $(id).querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===v)));
+}
+
+function update(){
+  const d=readForm();
+  const has=fields.some(f=>d[f]>0);
+  const r=calc(d); const t=TIER_INFO[r.idx];
+  const res=$("result");
+  $("tierSeasonLbl").textContent=r.cfg.label;
+  renderTierRef(r.cfg);
+  if(!has){
+    res.style.removeProperty("--tier");$("scoreVal").textContent="—";$("tierChip").textContent="—";
+    $("passes").textContent="";$("tierNote").textContent="Enter your four power values to see your tier.";
+    $("tierNote").className="note";$("breakdown").innerHTML="";$("bar").innerHTML="";$("ticks").innerHTML="";
+    return;
+  }
+  res.style.setProperty("--tier",t.color);
+  $("scoreVal").textContent=fmtM(r.score);
+  $("tierChip").textContent=t.name;
+  $("passes").textContent=t.passes+" passes · "+t.freedom;
+  const next=r.cfg.cuts[r.idx];
+  if(r.border){$("tierNote").textContent="Borderline: within 1M of a tier line. Treat it as a coin flip and check in-game.";$("tierNote").className="note warn"}
+  else if(r.idx<3){$("tierNote").textContent=fmtM(next-r.score)+"M below "+TIER_INFO[r.idx+1].name+" ("+next+"M).";$("tierNote").className="note"}
+  else {$("tierNote").textContent="Above the Elite line ("+r.cfg.cuts[2]+"M).";$("tierNote").className="note"}
+  // bar
+  const max=r.cfg.cuts[2]*1.4; const pos=v=>Math.max(0,Math.min(100,v/max*100));
+  let bh="";
+  const edges=[0,...r.cfg.cuts,max];
+  edges.slice(0,-1).forEach((e,i)=>{bh+=`<span class="seg-fill" style="left:${pos(e)}%;width:${pos(edges[i+1])-pos(e)}%;background:${TIER_INFO[i].color};opacity:.22"></span>`});
+  r.cfg.cuts.forEach(c=>bh+=`<i style="left:${pos(c)}%"></i>`);
+  bh+=`<span class="pin" style="left:${pos(r.score)}%"></span>`;
+  $("bar").innerHTML=bh;
+  $("ticks").innerHTML=["0",...r.cfg.cuts].map((c,i)=>`<span style="left:${i?pos(+c):1.5}%">${c}M</span>`).join("");
+  $("breakdown").innerHTML=r.parts.map(p=>`<dt>${p[0]}</dt><dd>${p[1]>=0?"+":"−"}${fmtM(Math.abs(p[1]))}M</dd>`).join("")+`<dt><b>Total</b></dt><dd><b>${fmtM(r.score)}M</b></dd>`;
+}
+function renderTierRef(cfg){
+  const [a,b,c]=cfg.cuts;
+  const ranges=[`< ${a}M`,`${a}–${b}M`,`${b}–${c}M`,`> ${c}M`];
+  $("tierRef").innerHTML=TIER_INFO.map((t,i)=>`<div style="--tier:${t.color}"><b>${t.name}</b><span>${ranges[i]}<br>${t.passes} passes</span></div>`).join("");
+}
+
+// input formatting
+fields.forEach(f=>{
+  const el=$(f);
+  el.addEventListener("input",()=>{
+    const pos=el.value.length-el.selectionStart;
+    const n=parseNum(el.value); el.value=n?fmt(n):"";
+    const p=Math.max(0,el.value.length-pos); try{el.setSelectionRange(p,p)}catch(e){}
+    markDirty(); update();
+  });
+});
+["season","t10"].forEach(id=>$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;setSeg(id,b.dataset.v);markDirty();update()}));
+$("vehicle").addEventListener("change",()=>{markDirty();update()});
+$("name").addEventListener("input",markDirty);
+$("exampleBtn").onclick=()=>{selectMember("");fillForm({...EXAMPLE,name:""});$("memberStatus").textContent="Example values loaded"};
+$("resetBtn").onclick=()=>{selectMember("");fillForm({season:state.season,t10:"no",vehicle:"hercules"});$("memberStatus").textContent="Cleared"};
+$("member").addEventListener("change",e=>{
+  const m=roster.find(x=>x.id===e.target.value);
+  if(m){selectMember(m.id);fillForm(m);$("memberStatus").textContent="Loaded "+m.name}
+  else{selectMember("")}
+});
+function markDirty(){if(currentId)$("memberStatus").textContent="Unsaved changes"}
+function selectMember(id){
+  currentId=id;$("member").value=id;$("delBtn").hidden=!id||!db;$("confirmBox").hidden=true;
+  document.querySelectorAll("#roster tr").forEach(tr=>tr.classList.toggle("sel",tr.dataset.id===id));
+}
+function toast(msg,bad){const t=$("toast");t.textContent=msg;t.style.color=bad?"var(--warn)":"var(--t-int)";clearTimeout(toast.t);toast.t=setTimeout(()=>t.textContent="",3500)}
+
+function slug(s){return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)||"member"}
+
+$("saveBtn").onclick=async()=>{
+  const d=readForm();
+  if(!d.name){toast("Add the member's in-game name first.",true);$("name").focus();return}
+  if(!fields.some(f=>d[f]>0)){toast("Enter at least one power value.",true);return}
+  if(!db){toast("The shared roster isn't available here, so this can't be saved.",true);return}
+  const id=currentId||slug(d.name);
+  const r=calc(d);
+  $("saveBtn").disabled=true;
+  try{
+    await db.collection("members").doc(id).set({name:d.name,structure:d.structure,tech:d.tech,hero:d.hero,mod:d.mod,season:d.season,t10:d.t10,vehicle:d.vehicle,score:Math.round(r.score*10)/10,updatedAt:Date.now()});
+    selectMember(id);$("memberStatus").textContent="Saved "+d.name;toast("Saved "+d.name+" on this device.");
+  }catch(e){toast(e&&e.code==="permission_denied"?"Couldn't save. Try again in a moment.":"This browser blocked saving. Turn off private browsing and try again.",true)}
+  finally{$("saveBtn").disabled=false}
+};
+$("delBtn").onclick=()=>{const m=roster.find(x=>x.id===currentId);if(!m)return;$("confirmName").textContent=m.name;$("confirmBox").hidden=false};
+$("confirmNo").onclick=()=>$("confirmBox").hidden=true;
+$("confirmYes").onclick=async()=>{
+  const id=currentId;$("confirmBox").hidden=true;
+  try{await db.collection("members").doc(id).delete();selectMember("");toast("Removed from the roster.")}
+  catch(e){toast("Couldn't remove that member.",true)}
+};
+
+function renderRoster(){
+  const withScore=roster.map(m=>({...m,_r:calc(m)})).sort((a,b)=>b._r.score-a._r.score);
+  const sel=$("member"); const keep=currentId;
+  sel.innerHTML='<option value="">— New / unsaved —</option>'+[...roster].sort((a,b)=>a.name.localeCompare(b.name)).map(m=>`<option value="${m.id}"></option>`).join("");
+  [...sel.options].slice(1).forEach(o=>{o.textContent=roster.find(m=>m.id===o.value).name});
+  const tb=$("roster"); tb.innerHTML="";
+  withScore.forEach((m,i)=>{
+    const t=TIER_INFO[m._r.idx];
+    const tr=document.createElement("tr");tr.dataset.id=m.id;tr.tabIndex=0;if(i<3)tr.classList.add("top"+(i+1));
+    tr.innerHTML=`<td class="n">${i+1}</td><td></td><td><span class="dot" style="--tier:${t.color}"></span>${t.name}${m._r.border?' <span style="color:var(--warn)">≈</span>':''}</td><td class="n">${fmtM(m._r.score)}M</td><td class="n">${t.passes}</td><td class="sm grp">${m.season==="s3"?"S3":"S1–S2"}</td><td class="sm">${m.t10==="yes"?"Yes":"No"}</td><td class="sm">${(VEH[m.vehicle]||VEH.hercules).label}</td><td class="n grp">${fmt(m.structure)||"—"}</td><td class="n">${fmt(m.tech)||"—"}</td><td class="n">${fmt(m.hero)||"—"}</td><td class="n">${fmt(m.mod)||"—"}</td>`;
+    tr.children[1].textContent=m.name;tr.children[1].className="stick";
+    const pick=()=>{selectMember(m.id);fillForm(m);$("memberStatus").textContent="Loaded "+m.name;window.scrollTo({top:0,behavior:"smooth"})};
+    tr.onclick=pick;tr.onkeydown=e=>{if(e.key==="Enter")pick()};
+    tb.appendChild(tr);
+  });
+  $("rosterEmpty").hidden=roster.length>0;
+  $("rosterCount").textContent=roster.length?roster.length+" member"+(roster.length>1?"s":""):"";
+  if(keep&&roster.some(m=>m.id===keep))selectMember(keep);else if(keep)selectMember("");
+}
+
+// initial: example so the page opens in a working state
+fillForm({...EXAMPLE,name:""});
+renderRoster();
+
+// Standalone roster: built-in Venus members + ones saved on this device
+const BUILT_IN=[
+  {"id": "404usernotfound", "name": "404UserNotfound", "structure": 47748451, "tech": 13163284, "hero": 40612502, "mod": 5983374, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "afamia", "name": "Afamia", "structure": 43543431, "tech": 11624080, "hero": 32016119, "mod": 6325647, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "ahmed2121", "name": "Ahmed2121", "structure": 27286517, "tech": 5677119, "hero": 30828115, "mod": 5560402, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "amedo1981", "name": "亗Amedo1981メ", "structure": 51186781, "tech": 14898741, "hero": 43349098, "mod": 7165527, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "angel-caido", "name": "Angel Caido", "structure": 41354407, "tech": 10108998, "hero": 29761970, "mod": 5483822, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "ashbornxx", "name": "Ashbornxx", "structure": 42736990, "tech": 9605210, "hero": 37330839, "mod": 5590022, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "b1nder", "name": "B1NDER", "structure": 40921703, "tech": 8668074, "hero": 41157173, "mod": 7177144, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "bad-game", "name": "Bad Game", "structure": 46803130, "tech": 13811905, "hero": 46033159, "mod": 8042846, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "benaw", "name": "benaw", "structure": 30018501, "tech": 6464380, "hero": 26875766, "mod": 4973045, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "calin-jeep", "name": "Calin Jeep", "structure": 42663426, "tech": 11933524, "hero": 37346173, "mod": 6997692, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "calk", "name": "CalK", "structure": 35555867, "tech": 6281249, "hero": 29382898, "mod": 5418606, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "cleop-tra", "name": "Cleopàtra", "structure": 43552794, "tech": 14637745, "hero": 44069196, "mod": 7313834, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "d-r-venom", "name": "DΛRΛVenom", "structure": 53468785, "tech": 14848960, "hero": 35701794, "mod": 6289519, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "echoesofzero", "name": "EchoesofZero", "structure": 35502154, "tech": 12661683, "hero": 34203626, "mod": 4661114, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "edu003", "name": "Edu003", "structure": 36034463, "tech": 11312693, "hero": 36451873, "mod": 6467354, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "efendi-kartal", "name": "EFENDI KARTAL", "structure": 49952778, "tech": 11939495, "hero": 37669507, "mod": 7153945, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "elena-09", "name": "Elena-09", "structure": 36615154, "tech": 11420002, "hero": 31518923, "mod": 6661419, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "emptyshell", "name": "Emptyshell", "structure": 48537216, "tech": 6555511, "hero": 38281096, "mod": 5805762, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "enad94", "name": "Enad94", "structure": 45688049, "tech": 13600191, "hero": 42095951, "mod": 6540119, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "engineer10", "name": "Engineer10", "structure": 44961625, "tech": 10259465, "hero": 42161030, "mod": 7568658, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "erceee", "name": "Erceee", "structure": 37601255, "tech": 13206340, "hero": 35136949, "mod": 6323506, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "exe", "name": "EXE°", "structure": 32347032, "tech": 6184150, "hero": 28929850, "mod": 5047045, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "filaa", "name": "Filaa", "structure": 38913478, "tech": 6694041, "hero": 29848896, "mod": 4591058, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "footprints", "name": "footprints", "structure": 54746319, "tech": 14169218, "hero": 36611497, "mod": 7337939, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "frat-moha", "name": "亗FRAT亗MOHA", "structure": 49235548, "tech": 12974879, "hero": 38603586, "mod": 5973669, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "gamzelikasap", "name": "gamzelikasap", "structure": 55117194, "tech": 14394793, "hero": 47507383, "mod": 8797711, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "golden-wing", "name": "Golden wing", "structure": 40964135, "tech": 13061305, "hero": 33526247, "mod": 7080003, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "hbk444", "name": "HBK444", "structure": 36295756, "tech": 8705465, "hero": 30878144, "mod": 5122906, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "helius1993", "name": "Helius1993", "structure": 72141591, "tech": 20054939, "hero": 51897510, "mod": 9523844, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "j2i0n0g1", "name": "J2I0N0G1", "structure": 29233960, "tech": 8579199, "hero": 30117807, "mod": 5131417, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "japrax-papua", "name": "JAPRAX PAPUA", "structure": 40368958, "tech": 12897939, "hero": 37909825, "mod": 6486782, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "kadir411903", "name": "Kadir411903", "structure": 52724480, "tech": 15374737, "hero": 49310772, "mod": 7826086, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "killnu", "name": "Killnu", "structure": 69491266, "tech": 14996030, "hero": 50162338, "mod": 9978641, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "kingfr", "name": "Kingfr", "structure": 36470346, "tech": 8126781, "hero": 30224108, "mod": 5192222, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "kiwiwein", "name": "KiwiWein", "structure": 33000948, "tech": 6587967, "hero": 25227599, "mod": 4799942, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "l-jane", "name": "L Jane", "structure": 48364030, "tech": 15498708, "hero": 49638060, "mod": 7028126, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "lad-ma", "name": "LadÿMaÿ", "structure": 36771735, "tech": 8319847, "hero": 33559642, "mod": 4521342, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "ludi-cacko", "name": "Ludi Cacko", "structure": 53165778, "tech": 15658719, "hero": 44221849, "mod": 8715734, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "malim", "name": "Malim", "structure": 33058113, "tech": 9233493, "hero": 30331047, "mod": 6253677, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "marko92rosanero", "name": "Marko92rosanero", "structure": 39759796, "tech": 10942454, "hero": 41197409, "mod": 6089643, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "mattchalatve", "name": "Mattchalatve", "structure": 38851441, "tech": 12062956, "hero": 30017194, "mod": 5268217, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "monalisa0", "name": "monalisa0", "structure": 45717982, "tech": 10347123, "hero": 30623988, "mod": 5682582, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "mpxxxxxx", "name": "Mpxxxxxx", "structure": 30360879, "tech": 6037549, "hero": 32915199, "mod": 5293755, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "nobody06", "name": "Nobody06", "structure": 52425550, "tech": 15586397, "hero": 48877456, "mod": 7600254, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "pavl0s", "name": "pavl0s", "structure": 36773128, "tech": 8624929, "hero": 27632036, "mod": 4672537, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "pikitaa", "name": "Pikitaa", "structure": 35745053, "tech": 7789615, "hero": 31867190, "mod": 5644522, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "purfectbynature", "name": "PurfectbyNature", "structure": 40038672, "tech": 12409901, "hero": 36896801, "mod": 5886537, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "rabbit22", "name": "Rabbit22", "structure": 43650704, "tech": 12334381, "hero": 49017959, "mod": 7455196, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "raquel", "name": "† Raquel", "structure": 39849249, "tech": 11905195, "hero": 34686983, "mod": 6006771, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "sanjanaaaaa", "name": "Sanjanaaaaa", "structure": 61662162, "tech": 18220156, "hero": 59798817, "mod": 9467287, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "serpent61", "name": "Serpent61", "structure": 52247780, "tech": 14572254, "hero": 35368147, "mod": 5741045, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "shaita-n", "name": "SHAITAÁN", "structure": 52477809, "tech": 15685361, "hero": 43284369, "mod": 6922156, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "squirtsurfer", "name": "SquirtSurfer", "structure": 44494052, "tech": 15067076, "hero": 42143367, "mod": 6515693, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "stueeafc", "name": "Stueeafc", "structure": 44355504, "tech": 12041378, "hero": 37510189, "mod": 6213431, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "suydrv", "name": "suydrv", "structure": 42827160, "tech": 11660807, "hero": 33555468, "mod": 6168978, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "troon", "name": "troon", "structure": 41995559, "tech": 11525786, "hero": 39545417, "mod": 6826935, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "vr904", "name": "Vr904", "structure": 57327720, "tech": 16095936, "hero": 46943892, "mod": 8413992, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "yutou", "name": "YuTou", "structure": 50681522, "tech": 12838851, "hero": 42396622, "mod": 7305341, "season": "s12", "t10": "no", "vehicle": "hercules"},
+  {"id": "zoro", "name": "-Zoro", "structure": 53729334, "tech": 14840238, "hero": 41903135, "mod": 6246727, "season": "s12", "t10": "no", "vehicle": "hercules"}
+];
+const LS_KEY="venus-migration-roster-v1";
+function loadLocal(){try{return JSON.parse(localStorage.getItem(LS_KEY))||{saved:{},hidden:[]}}catch(e){return {saved:{},hidden:[]}}}
+function saveLocal(s){try{localStorage.setItem(LS_KEY,JSON.stringify(s));return true}catch(e){return false}}
+let listeners=[];
+function emit(){
+  const s=loadLocal();const map={};
+  BUILT_IN.forEach(m=>{if(!s.hidden.includes(m.id))map[m.id]=m});
+  Object.entries(s.saved).forEach(([id,m])=>map[id]={...m,id});
+  roster=Object.values(map);renderRoster();
+}
+db={collection:()=>({doc:id=>({
+  set:async d=>{const s=loadLocal();s.saved[id]=d;s.hidden=s.hidden.filter(x=>x!==id);if(!saveLocal(s))throw {code:"storage"};emit()},
+  delete:async()=>{const s=loadLocal();delete s.saved[id];if(BUILT_IN.some(m=>m.id===id)&&!s.hidden.includes(id))s.hidden.push(id);saveLocal(s);emit()}
+})})};
+$("dbStatus").textContent="Venus roster";
+emit();
+</script>
+
+</body>
+</html>
